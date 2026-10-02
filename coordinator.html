@@ -93,12 +93,9 @@
                 <select class="input" id="duration"></select>
               </div>
               <div class="field">
-                <label for="sortBy">Sorteren</label>
-                <select class="input" id="sortBy">
-                  <option value="chrono">Chronologisch</option>
-                  <option value="type">Per type (fysiek → combinatie → online)</option>
-                  <option value="length">Langste venster eerst</option>
-                </select>
+                <label for="minPeople">Minimaal aantal deelnemers</label>
+                <select class="input" id="minPeople" disabled><option>Iedereen</option></select>
+                <span class="hint">Kies minder dan iedereen om ook momenten te zien waarop bijna iedereen kan.</span>
               </div>
               <div class="field">
                 <span class="label">Datum</span>
@@ -158,7 +155,16 @@
                 <h2 id="results-title" style="font-size:1.2rem;margin:0">Resultaten</h2>
                 <div class="result-summary" id="resultSummary" style="margin-top:8px"></div>
               </div>
-              <button class="btn btn-sm" type="button" id="copyResults"><i data-icon="copy"></i> Kopieer overzicht</button>
+              <div class="btn-row">
+                <label class="visually-hidden" for="sortBy">Sorteren</label>
+                <select class="input input-sm" id="sortBy" style="width:auto">
+                  <option value="chrono">Chronologisch</option>
+                  <option value="type">Per type</option>
+                  <option value="available">Meeste deelnemers eerst</option>
+                  <option value="length">Langste venster eerst</option>
+                </select>
+                <button class="btn btn-sm" type="button" id="copyResults"><i data-icon="copy"></i> Kopieer overzicht</button>
+              </div>
             </div>
             <div id="resultNotes"></div>
             <div id="results" aria-live="polite"></div>

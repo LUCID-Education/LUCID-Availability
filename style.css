@@ -510,6 +510,15 @@ details.menu > summary::-webkit-details-marker { display: none; }
 .empty-state .big-ico { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
 .empty-state h3 { color: var(--ink); }
 
+
+/* Resultaten waarbij niet iedereen kan */
+.badge-partial { background: #EEE8E4; color: var(--ink-2); }
+.result.t-partial .stripe { background: repeating-linear-gradient(180deg, #B9AEA8 0 6px, #DCD3CE 6px 10px); }
+.result.t-partial { border-style: dashed; }
+.result-missing { grid-column: 1 / -1; font-size: .88rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; color: var(--ink-2); }
+.section-head { display: flex; align-items: center; gap: 10px; font-size: 1.05rem; margin: 6px 0 14px; padding: 10px 14px; border-radius: 12px; background: var(--brand-tint); color: #7A1D12; }
+.section-head.partial { margin-top: 26px; background: var(--surface-2); color: var(--ink-2); }
+
 /* Heatmap */
 .heatmap-wrap { overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
 .heatmap { min-width: 760px; display: flex; flex-direction: column; gap: 6px; }

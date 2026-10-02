@@ -32,7 +32,7 @@
 
   var N_SLOTS = core.SLOTS_PER_DAY;
   var S = core.STATUS;
-  var TYPE_ORDER = { physical: 0, mixed: 1, online: 2 };
+  var TYPE_ORDER = { physical: 0, mixed: 1, online: 2, partial: 3 };
 
   /** Datums waarvoor elke deelnemer gegevens heeft + datums die daardoor wegvallen. */
   function computeCoverage(participants) {
@@ -74,45 +74,58 @@
    * @param {number} k        vergaderduur in blokken
    * @param {number} lo       vroegste starttijd (slotindex)
    * @param {number} hi       laatste eindtijd (slotindex, exclusief)
+   * @param {number} [minCount] minimaal aantal beschikbare deelnemers (standaard: iedereen)
+   *
+   * Types: 'physical' | 'mixed' | 'online' (iedereen kan) en
+   *        'partial' (minstens minCount, maar niet iedereen kan).
    */
-  function findForDate(date, participants, k, lo, hi) {
+  function findForDate(date, participants, k, lo, hi, minCount) {
     var blocked = core.blockedSlots(date);
     var pref = participants.map(function (p) { return prefixFor(p.slots[date], blocked); });
     var n = participants.length;
+    var need = Math.max(1, Math.min(n, minCount || n));
     var groups = [];
     var current = null;
 
     for (var s = lo; s + k <= hi; s++) {
       var e = s + k;
-      var allPhys = true, allOnline = true, allAvail = true;
-      var needOnline = [];
+      var allPhys = true, allOnline = true;
+      var needOnline = [], missing = [];
       for (var i = 0; i < n; i++) {
         var P = pref[i];
         var physSum = P.phys[e] - P.phys[s];
         var onlSum = P.onl[e] - P.onl[s];
         var availSum = P.avail[e] - P.avail[s];
-        if (availSum < k) { allAvail = false; break; }
+        if (availSum < k) {                      // niet het volledige interval beschikbaar
+          missing.push(i);
+          if (n - missing.length < need) break;  // kan het minimum niet meer halen
+          continue;
+        }
         if (physSum < k) { allPhys = false; needOnline.push(i); }
         if (onlSum < k) allOnline = false;
       }
+      var available = n - missing.length;
       var type = null;
-      if (allAvail) type = allPhys ? 'physical' : (allOnline ? 'online' : 'mixed');
+      if (available === n) type = allPhys ? 'physical' : (allOnline ? 'online' : 'mixed');
+      else if (available >= need) type = 'partial';
 
-      var key = type ? type + '|' + (type === 'mixed' ? needOnline.join(',') : '') : null;
+      var key = type ? type + '|' + (type === 'mixed' || type === 'partial' ? needOnline.join(',') : '') + '|' + missing.join(',') : null;
       if (current && key === current.key && s === current.lastStart + 1) {
         current.lastStart = s;
       } else {
         if (current) groups.push(current);
-        current = key ? { key: key, type: type, firstStart: s, lastStart: s, needOnline: needOnline.slice() } : null;
+        current = key ? { key: key, type: type, firstStart: s, lastStart: s, needOnline: needOnline.slice(), missing: missing.slice() } : null;
       }
     }
     if (current) groups.push(current);
 
     return groups.map(function (g) {
-      var onlineNames = g.type === 'mixed' ? g.needOnline.map(function (i) { return participants[i].fullName; }) :
-        g.type === 'online' ? participants.map(function (p) { return p.fullName; }) : [];
-      var physicalNames = g.type === 'physical' ? participants.map(function (p) { return p.fullName; }) :
-        g.type === 'mixed' ? participants.filter(function (p, i) { return g.needOnline.indexOf(i) < 0; }).map(function (p) { return p.fullName; }) : [];
+      var names = function (pred) { return participants.filter(pred).map(function (p) { return p.fullName; }).sort(collate); };
+      var isMissing = function (p, i) { return g.missing.indexOf(i) >= 0; };
+      var isOnline = function (p, i) { return g.type === 'online' || g.needOnline.indexOf(i) >= 0; };
+      var physicalNames = names(function (p, i) { return !isMissing(p, i) && !isOnline(p, i); });
+      var onlineNames = names(function (p, i) { return !isMissing(p, i) && isOnline(p, i); });
+      var missingNames = names(isMissing);
       return {
         date: date,
         weekday: core.isoWeekday(date),
@@ -124,10 +137,12 @@
         durationSlots: k,
         startCount: g.lastStart - g.firstStart + 1,
         participantCount: n,
+        availableCount: n - g.missing.length,
         physicalCount: physicalNames.length,
         onlineCount: onlineNames.length,
-        physicalNames: physicalNames.sort(collate),
-        onlineNames: onlineNames.sort(collate)
+        physicalNames: physicalNames,
+        onlineNames: onlineNames,
+        missingNames: missingNames
       };
     });
   }
@@ -142,12 +157,13 @@
    *   dateFrom, dateTo: 'YYYY-MM-DD' (optioneel),
    *   timeFrom, timeTo: slotindex 0…96 (vergadering moet volledig binnen dit bereik vallen),
    *   weekdays: [1..7] (1 = maandag),
-   *   types: { physical: true, mixed: true, online: true }
+   *   types: { physical: true, mixed: true, online: true },
+   *   minParticipants: 7   (optioneel; standaard iedereen)
    * }
    */
   function analyze(participants, opts) {
     opts = opts || {};
-    var out = { results: [], commonDates: [], consideredDates: [], excluded: [], hiddenStarts: 0, totalStarts: 0, counts: { physical: 0, mixed: 0, online: 0 } };
+    var out = { results: [], commonDates: [], consideredDates: [], excluded: [], hiddenStarts: 0, totalStarts: 0, counts: { physical: 0, mixed: 0, online: 0, partial: 0 } };
     if (!participants || !participants.length) return out;
 
     var k = Math.round((opts.durationMinutes || 60) / core.SLOT_MINUTES);
@@ -156,6 +172,8 @@
     var timeTo = clampInt(opts.timeTo, 0, N_SLOTS, N_SLOTS);
     var weekdays = opts.weekdays || [1, 2, 3, 4, 5, 6, 7];
     var types = opts.types || { physical: true, mixed: true, online: true };
+    var minCount = clampInt(opts.minParticipants, 1, participants.length, participants.length);
+    out.minParticipants = minCount;
 
     var cov = computeCoverage(participants);
     out.commonDates = cov.commonDates;
@@ -164,15 +182,15 @@
     var filteredStarts = 0, allStarts = 0;
     cov.commonDates.forEach(function (date) {
       // Ongefilterd (voor de melding "x starttijden vallen buiten je filters")
-      findForDate(date, participants, k, 0, N_SLOTS).forEach(function (r) { allStarts += r.startCount; });
+      findForDate(date, participants, k, 0, N_SLOTS, minCount).forEach(function (r) { allStarts += r.startCount; });
 
       if (opts.dateFrom && date < opts.dateFrom) return;
       if (opts.dateTo && date > opts.dateTo) return;
       if (weekdays.indexOf(core.isoWeekday(date)) < 0) return;
       out.consideredDates.push(date);
 
-      findForDate(date, participants, k, timeFrom, timeTo).forEach(function (r) {
-        if (!types[r.type]) return;
+      findForDate(date, participants, k, timeFrom, timeTo, minCount).forEach(function (r) {
+        if (r.type !== 'partial' && !types[r.type]) return;
         filteredStarts += r.startCount;
         out.counts[r.type]++;
         out.results.push(r);
@@ -192,7 +210,8 @@
   function sortResults(results, mode) {
     var arr = results.slice();
     function chrono(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.windowStart - b.windowStart || TYPE_ORDER[a.type] - TYPE_ORDER[b.type]; }
-    if (mode === 'type') arr.sort(function (a, b) { return TYPE_ORDER[a.type] - TYPE_ORDER[b.type] || chrono(a, b); });
+    if (mode === 'available') arr.sort(function (a, b) { return b.availableCount - a.availableCount || chrono(a, b); });
+    else if (mode === 'type') arr.sort(function (a, b) { return TYPE_ORDER[a.type] - TYPE_ORDER[b.type] || chrono(a, b); });
     else if (mode === 'length') arr.sort(function (a, b) { return (b.windowEnd - b.windowStart) - (a.windowEnd - a.windowStart) || chrono(a, b); });
     else arr.sort(chrono);
     return arr;

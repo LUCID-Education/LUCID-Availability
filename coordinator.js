@@ -23,7 +23,8 @@
   var TYPE_INFO = {
     physical: { label: 'Iedereen fysiek', badge: 'badge-physical', icon: 'user' },
     mixed: { label: 'Iedereen beschikbaar: fysiek of online', badge: 'badge-mixed', icon: 'users' },
-    online: { label: 'Iedereen alleen online', badge: 'badge-online', icon: 'laptop' }
+    online: { label: 'Iedereen alleen online', badge: 'badge-online', icon: 'laptop' },
+    partial: { label: 'Niet iedereen', badge: 'badge-partial', icon: 'users' }
   };
 
   var participants = [];
@@ -68,7 +69,7 @@
       ]));
     });
 
-    ['duration', 'sortBy', 'dateFrom', 'dateTo', 'timeFrom', 'timeTo'].forEach(function (id) {
+    ['duration', 'minPeople', 'sortBy', 'dateFrom', 'dateTo', 'timeFrom', 'timeTo'].forEach(function (id) {
       $(id).addEventListener('change', function () { if (searched) runSearch(false); });
     });
     [wd, $('types')].forEach(function (g) {
@@ -89,6 +90,7 @@
       timeTo: +$('timeTo').value,
       weekdays: weekdays,
       types: types,
+      minParticipants: +$('minPeople').value || participants.length,
       sort: $('sortBy').value
     };
   }
@@ -231,6 +233,7 @@
       if (!dt.value || dt.value > last || dt.value < first) dt.value = last;
     } else { df.value = dt.value = ''; }
 
+    buildMinPeople();
     var has = participants.length > 0;
     $('searchBtn').disabled = !has || !cov.commonDates.length;
     $('searchHint').textContent = !has ? 'Laad eerst minstens één bestand.'
@@ -238,6 +241,20 @@
         : participants.length + ' deelnemer' + (participants.length === 1 ? '' : 's') + ' · ' + cov.commonDates.length + ' gemeenschappelijke dag' + (cov.commonDates.length === 1 ? '' : 'en');
     if (!has) { searched = false; $('resultsCard').hidden = true; $('heatmapCard').hidden = true; }
     else if (searched) runSearch(false);
+  }
+
+  /** Keuzelijst "Minimaal aantal deelnemers": Iedereen (n), n-1 van n, … 1 van n. */
+  function buildMinPeople() {
+    var sel = $('minPeople'), n = participants.length;
+    var prev = sel.dataset.chosen === 'all' || !sel.dataset.chosen ? 'all' : +sel.dataset.chosen;
+    ui.clear(sel);
+    if (!n) { sel.appendChild(el('option', { text: 'Iedereen' })); sel.disabled = true; return; }
+    sel.disabled = n < 2;
+    for (var m = n; m >= 1; m--) {
+      sel.appendChild(el('option', { value: String(m), text: m === n ? 'Iedereen (' + n + ')' : m + ' van ' + n }));
+    }
+    sel.value = String(prev === 'all' || prev > n ? n : prev);
+    if (!sel.onchange) sel.onchange = function () { sel.dataset.chosen = +sel.value === participants.length ? 'all' : sel.value; };
   }
 
   function renderParticipants() {
@@ -316,7 +333,7 @@
     ui.clear(s);
     var total = res.results.length;
     s.appendChild(el('span', { class: 'badge badge-neutral', text: total + (total === 1 ? ' venster' : ' vensters') + ' · ' + core.formatMeetingDuration(opts.durationMinutes) }));
-    ['physical', 'mixed', 'online'].forEach(function (t) {
+    ['physical', 'mixed', 'online', 'partial'].forEach(function (t) {
       if (res.counts[t]) s.appendChild(el('span', { class: 'badge ' + TYPE_INFO[t].badge }, [icon(TYPE_INFO[t].icon), res.counts[t] + ' · ' + shortType(t)]));
     });
     var notes = $('resultNotes');
@@ -332,19 +349,36 @@
     }
   }
 
-  function shortType(t) { return t === 'physical' ? 'iedereen fysiek' : t === 'mixed' ? 'fysiek/online' : 'iedereen online'; }
+  function shortType(t) { return t === 'physical' ? 'iedereen fysiek' : t === 'mixed' ? 'fysiek/online' : t === 'online' ? 'iedereen online' : 'niet iedereen'; }
 
   function renderResults(results, opts) {
     var box = $('results');
     ui.clear(box);
+    var full = results.filter(function (r) { return r.type !== 'partial'; });
+    var partial = results.filter(function (r) { return r.type === 'partial'; });
+    var n = participants.length;
     if (!results.length) {
       box.appendChild(el('div', { class: 'empty-state' }, [
         el('div', { class: 'big-ico' }, icon('calendar', 'icon-lg')),
         el('h3', { text: 'Geen gemeenschappelijke momenten gevonden' }),
-        el('p', { text: 'Probeer een kortere vergaderduur, ruimere uren of meer dagen en types.' })
+        el('p', { text: (opts.minParticipants >= n && n > 1)
+          ? 'Probeer een kortere vergaderduur, ruimere uren, meer dagen, of kies bij "Minimaal aantal deelnemers" iets lager dan iedereen.'
+          : 'Probeer een kortere vergaderduur, ruimere uren of meer dagen en types.' })
       ]));
       return;
     }
+    if (partial.length) {
+      box.appendChild(el('h3', { class: 'section-head' }, [icon('users'), 'Iedereen kan (' + full.length + ')']));
+      if (!full.length) box.appendChild(alertBox('info', 'Er is geen moment waarop iedereen kan (met deze filters). Hieronder staan de momenten waarop minstens ' + opts.minParticipants + ' van de ' + n + ' deelnemers kunnen.'));
+    }
+    renderList(box, full, opts, 0);
+    if (partial.length) {
+      box.appendChild(el('h3', { class: 'section-head partial' }, [icon('users'), 'Bijna iedereen: minstens ' + opts.minParticipants + ' van ' + n + ' (' + partial.length + ')']));
+      renderList(box, partial, opts, full.length);
+    }
+  }
+
+  function renderList(box, results, opts, offset) {
     var grouped = opts.sort === 'chrono';
     var currentDate = null, group = null;
     results.forEach(function (r, i) {
@@ -353,7 +387,7 @@
         group = el('div', { class: 'date-group' }, el('h3', {}, [icon('calendar'), core.formatDateLong(r.date)]));
         box.appendChild(group);
       }
-      var card = resultCard(r, !grouped, i);
+      var card = resultCard(r, !grouped, offset + i);
       (grouped ? group : box).appendChild(card);
     });
   }
@@ -371,7 +405,7 @@
         core.slotToTime(r.windowStart) + ' – ' + core.slotToTime(r.windowEnd)
       ])
     ]));
-    body.appendChild(el('div', {}, el('span', { class: 'badge ' + info.badge }, [icon(info.icon), info.label])));
+    body.appendChild(el('div', {}, el('span', { class: 'badge ' + info.badge }, [icon(info.icon), r.type === 'partial' ? r.availableCount + ' van ' + r.participantCount + ' beschikbaar' : info.label])));
 
     var meta = el('div', { class: 'result-meta' }, [
       el('span', {}, ['Vergaderduur: ', el('b', { text: core.formatMeetingDuration(r.durationSlots * core.SLOT_MINUTES) })]),
@@ -379,11 +413,15 @@
         ? el('span', {}, ['Starttijd: ', el('b', { text: core.slotToTime(r.firstStart) })])
         : el('span', {}, ['Mogelijke starttijden: ', el('b', { text: core.slotToTime(r.firstStart) + ' t/m ' + core.slotToTime(r.lastStart) }), ' (' + r.startCount + ')'])
     ]);
-    if (r.type === 'mixed') meta.appendChild(el('span', {}, [el('b', { text: String(r.physicalCount) }), ' fysiek · ', el('b', { text: String(r.onlineCount) }), ' alleen online']));
+    if (r.type === 'partial') meta.appendChild(el('span', {}, [el('b', { text: r.availableCount + '/' + r.participantCount }), ' beschikbaar: ', el('b', { text: String(r.physicalCount) }), ' fysiek', r.onlineCount ? ' · ' : null, r.onlineCount ? el('b', { text: String(r.onlineCount) }) : null, r.onlineCount ? ' online' : null]));
+    else if (r.type === 'mixed') meta.appendChild(el('span', {}, [el('b', { text: String(r.physicalCount) }), ' fysiek · ', el('b', { text: String(r.onlineCount) }), ' alleen online']));
     else meta.appendChild(el('span', {}, [el('b', { text: r.participantCount + '/' + r.participantCount }), r.type === 'physical' ? ' fysiek' : ' online']));
     body.appendChild(meta);
 
-    if (r.type === 'mixed') {
+    if (r.type === 'partial') {
+      body.appendChild(el('div', { class: 'result-missing' }, [el('strong', { text: 'Niet beschikbaar: ' }), r.missingNames.join(', ')]));
+    }
+    if ((r.type === 'mixed' || r.type === 'partial') && r.onlineNames.length) {
       body.appendChild(el('div', { class: 'result-online' }, [el('strong', { text: 'Online nodig: ' }), r.onlineNames.join(', ')]));
     }
 
@@ -481,7 +519,8 @@
       var line = '• ' + core.formatDateLong(r.date) + ', ' + core.slotToTime(r.windowStart) + '–' + core.slotToTime(r.windowEnd) +
         ' · ' + TYPE_INFO[r.type].label +
         (r.startCount > 1 ? ' · starttijden ' + core.slotToTime(r.firstStart) + ' t/m ' + core.slotToTime(r.lastStart) : ' · start ' + core.slotToTime(r.firstStart));
-      if (r.type === 'mixed') line += ' · online nodig: ' + r.onlineNames.join(', ');
+      if (r.type === 'partial') line += ' · ' + r.availableCount + '/' + r.participantCount + ' beschikbaar · niet beschikbaar: ' + r.missingNames.join(', ');
+      if ((r.type === 'mixed' || r.type === 'partial') && r.onlineNames.length) line += ' · online nodig: ' + r.onlineNames.join(', ');
       lines.push(line);
     });
     if (!res.results.length) lines.push('Geen gemeenschappelijke momenten gevonden.');
