@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="nl-BE">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Beschikbaarheid invullen · LUCID Availability</title>
+  <meta name="description" content="Geef in een paar minuten je beschikbaarheid door aan LUCID, per kwartier, fysiek of online.">
+  <meta name="theme-color" content="#C91F1F">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page-student">
+  <a class="skip-link" href="#main">Naar de inhoud</a>
+
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="index.html" aria-label="LUCID Availability – startpagina">
+        <img src="lucid-logo.png" alt="LUCID" width="900" height="502">
+        <span class="brand-tag">Availability</span>
+      </a>
+      <nav class="header-nav" aria-label="Hoofdnavigatie">
+        <a href="availability.html" aria-current="page">Invullen</a>
+        <a href="coordinator.html">Coördinator</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="container">
+
+      <div class="page-head">
+        <div>
+          <h1>Beschikbaarheid doorgeven</h1>
+          <p>Duid aan wanneer je fysiek of online kan vergaderen. Dat duurt maar een paar minuten.</p>
+        </div>
+      </div>
+
+      <ol class="steps" id="steps" aria-label="Voortgang">
+        <li data-step="1"><span class="n">1</span><span class="t"><small>Stap 1 van 3</small>Gegevens</span></li>
+        <li data-step="2"><span class="n">2</span><span class="t"><small>Stap 2 van 3</small>Beschikbaarheid</span></li>
+        <li data-step="3"><span class="n">3</span><span class="t"><small>Stap 3 van 3</small>Controleren &amp; indienen</span></li>
+      </ol>
+
+      <!-- Melding: niet-afgerond concept gevonden op dit toestel -->
+      <div class="alert alert-brand" id="resumeBanner" hidden style="margin-bottom:18px">
+        <i data-icon="info"></i>
+        <div style="flex:1">
+          <p><strong>Er staat een niet-afgeronde invulling op dit toestel</strong> voor <strong id="resumeName"></strong> (<span id="resumeWhen"></span>).</p>
+          <p class="small">Ben jij dit niet? Begin dan opnieuw: de gegevens van de vorige persoon worden gewist en niet getoond.</p>
+          <div class="btn-row">
+            <button class="btn btn-dark btn-sm" type="button" id="resumeYes">Ja, dit ben ik. Verder gaan</button>
+            <button class="btn btn-sm" type="button" id="resumeNo"><i data-icon="trash"></i> Nee, opnieuw beginnen</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ STAP 1 – Gegevens ============ -->
+      <section id="step1" class="step-panel" aria-labelledby="s1-title" hidden>
+        <div class="container-narrow" style="margin:0 auto">
+          <form class="card" id="detailsForm" novalidate>
+            <div class="card-header">
+              <div>
+                <h2 id="s1-title" class="section-title"><span class="num-badge">1</span> Wie ben je en voor welke periode?</h2>
+                <p class="card-sub">Alle velden zijn verplicht.</p>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="field">
+                <label for="firstName">Voornaam</label>
+                <input class="input" id="firstName" name="firstName" autocomplete="given-name" maxlength="60" required placeholder="bv. Ali">
+                <div class="field-error" id="firstName-err" aria-live="polite"></div>
+              </div>
+              <div class="field">
+                <label for="lastName">Familienaam</label>
+                <input class="input" id="lastName" name="lastName" autocomplete="family-name" maxlength="60" required placeholder="bv. Alhayek">
+                <div class="field-error" id="lastName-err" aria-live="polite"></div>
+              </div>
+              <div class="field">
+                <label for="startDate">Startdatum</label>
+                <input class="input" type="date" id="startDate" name="startDate" required>
+                <div class="field-error" id="startDate-err" aria-live="polite"></div>
+              </div>
+              <div class="field">
+                <label for="endDate">Einddatum</label>
+                <input class="input" type="date" id="endDate" name="endDate" required>
+                <div class="field-error" id="endDate-err" aria-live="polite"></div>
+              </div>
+            </div>
+
+            <div class="alert alert-info" id="periodLocked" hidden style="margin-top:14px">
+              <i data-icon="lock"></i>
+              <div>De periode werd ingesteld door de coördinator via je uitnodigingslink.</div>
+            </div>
+
+            <div id="periodQuick" style="margin-top:14px">
+              <span class="label" style="display:block;margin-bottom:8px">Snel kiezen</span>
+              <div class="pill-group">
+                <button type="button" class="check-pill" data-quick="thisweek">Deze week</button>
+                <button type="button" class="check-pill" data-quick="nextweek">Volgende week</button>
+                <button type="button" class="check-pill" data-quick="next2">Komende 2 weken</button>
+              </div>
+            </div>
+
+            <p class="muted small" id="periodInfo" style="margin:14px 0 0" aria-live="polite"></p>
+
+            <div class="btn-row between" style="margin-top:20px">
+              <label class="btn btn-ghost btn-sm" for="importFile" style="cursor:pointer">
+                <i data-icon="file"></i> Eerder bestand openen om aan te passen
+              </label>
+              <input type="file" id="importFile" accept=".json,application/json" class="visually-hidden">
+              <button class="btn btn-primary btn-lg" type="submit">Beschikbaarheid invullen <i data-icon="arrowRight"></i></button>
+            </div>
+          </form>
+
+          <p class="privacy-note" style="justify-content:center;color:var(--muted)">
+            <i data-icon="shield"></i>
+            <span>Je gegevens blijven op dit toestel tot je ze zelf downloadt of indient.</span>
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ STAP 2 – Beschikbaarheid ============ -->
+      <section id="step2" class="step-panel" aria-labelledby="s2-title" hidden>
+        <h2 id="s2-title" class="visually-hidden">Beschikbaarheid aanduiden</h2>
+
+        <div class="planner-bar">
+          <div class="planner-bar-inner">
+            <div class="brush" role="group" aria-label="Wat wil je aanduiden?">
+              <button type="button" data-brush="1" aria-pressed="true" title="Fysiek beschikbaar (toets 1)"><span class="sw sw-1"></span><i data-icon="user"></i> Fysiek <span class="long">beschikbaar</span> <span class="k">1</span></button>
+              <button type="button" data-brush="2" aria-pressed="false" title="Alleen online beschikbaar (toets 2)"><span class="sw sw-2"></span><i data-icon="laptop"></i> <span class="long">Alleen</span> online <span class="k">2</span></button>
+              <button type="button" data-brush="0" aria-pressed="false" title="Wissen: niet beschikbaar (toets 3)"><span class="sw sw-0"></span><i data-icon="eraser"></i> Wissen <span class="k">3</span></button>
+            </div>
+            <div class="selection-live" id="selectionLive" aria-live="polite"><i data-icon="clock"></i> <span id="selectionText">Sleep over de tijdlijn</span></div>
+            <div class="planner-tools">
+              <button class="btn btn-ghost btn-sm btn-icon" type="button" id="undoBtn" title="Ongedaan maken (Ctrl+Z)" aria-label="Ongedaan maken"><i data-icon="undo"></i></button>
+              <button class="btn btn-ghost btn-sm btn-icon" type="button" id="redoBtn" title="Opnieuw (Ctrl+Y)" aria-label="Opnieuw uitvoeren"><i data-icon="redo"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <p class="planner-hint" id="plannerHint">
+          <i data-icon="info"></i>
+          <span id="plannerHintText">Kies hierboven <strong>Fysiek</strong>, <strong>Online</strong> of <strong>Wissen</strong> en sleep over een tijdlijn om meerdere kwartieren tegelijk te markeren. Eén klik op een blok zet of verwijdert één kwartier.</span>
+        </p>
+
+        <div class="bulk-bar">
+          <span class="label">Sneller invullen:</span>
+          <button class="btn btn-sm" type="button" id="bulkFillBtn"><i data-icon="sparkle"></i> Zelfde tijdvak op meerdere dagen</button>
+          <label class="check" style="margin-left:auto"><input type="checkbox" id="hideNight"> Nachturen (00:00–06:00) verbergen</label>
+          <button class="btn btn-danger-ghost btn-sm" type="button" id="clearAllBtn"><i data-icon="trash"></i> Alles wissen</button>
+        </div>
+
+        <div class="legend" style="margin-bottom:14px" aria-label="Legenda">
+          <span class="legend-item"><span class="sw sw-1"></span> <i data-icon="user"></i> Fysiek beschikbaar</span>
+          <span class="legend-item"><span class="sw sw-2"></span> <i data-icon="laptop"></i> Alleen online beschikbaar</span>
+          <span class="legend-item"><span class="sw sw-0"></span> Niet beschikbaar</span>
+        </div>
+
+        <div class="day-list" id="dayList"></div>
+
+        <div class="btn-row between" style="margin-top:24px">
+          <button class="btn" type="button" id="backTo1"><i data-icon="arrowLeft"></i> Gegevens</button>
+          <button class="btn btn-primary btn-lg" type="button" id="toReview">Controleren <i data-icon="arrowRight"></i></button>
+        </div>
+      </section>
+
+      <!-- ============ STAP 3 – Controleren & indienen ============ -->
+      <section id="step3" class="step-panel" aria-labelledby="s3-title" hidden>
+        <div class="card" id="reviewCard">
+          <div class="card-header">
+            <div>
+              <h2 id="s3-title" class="section-title"><span class="num-badge">3</span> Controleer je beschikbaarheid</h2>
+              <p class="card-sub">Klopt alles? Download of dien daarna je bestand in.</p>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:1.35rem" id="rvName"></div>
+            <div class="muted" id="rvPeriod"></div>
+          </div>
+          <div class="summary-grid">
+            <div class="stat"><div class="v tabular" id="rvDays">0</div><div class="l"><i data-icon="calendar"></i> dagen in periode</div></div>
+            <div class="stat"><div class="v tabular" id="rvFilled">0</div><div class="l"><i data-icon="check"></i> dagen met beschikbaarheid</div></div>
+            <div class="stat physical"><div class="v tabular" id="rvPhys">0 uur</div><div class="l"><span class="sw sw-1"></span> fysiek beschikbaar</div></div>
+            <div class="stat online"><div class="v tabular" id="rvOnline">0 uur</div><div class="l"><span class="sw sw-2"></span> alleen online</div></div>
+          </div>
+          <div id="rvWarnings"></div>
+          <h3 style="margin-top:18px">Overzicht per dag</h3>
+          <div class="mini-days" id="rvDaysList"></div>
+
+          <div class="alert alert-info" id="submitInfo" hidden style="margin-top:20px">
+            <i data-icon="send"></i>
+            <div>Bij <strong>Beschikbaarheid indienen</strong> worden je naam, de periode en je beschikbaarheid naar LUCID verzonden. Er worden geen andere gegevens verstuurd.</div>
+          </div>
+
+          <div class="btn-row between" style="margin-top:22px">
+            <button class="btn" type="button" id="backTo2"><i data-icon="arrowLeft"></i> Terug aanpassen</button>
+            <div class="btn-row">
+              <button class="btn" type="button" id="downloadBtn"><i data-icon="download"></i> Download beschikbaarheidsbestand</button>
+              <button class="btn btn-primary btn-lg" type="button" id="submitBtn" hidden><i data-icon="send"></i> Beschikbaarheid indienen</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Na downloaden/indienen -->
+        <div class="card done-card" id="doneCard" hidden tabindex="-1">
+          <div class="big-ico"><i data-icon="check"></i></div>
+          <h2 id="doneTitle">Je bestand is gedownload</h2>
+          <p class="muted" id="doneText">Bestandsnaam: <span class="filename" id="doneFilename"></span></p>
+          <ol class="steps-list" id="doneSteps">
+            <li>Open een nieuwe e-mail aan <strong id="doneEmail"></strong>.</li>
+            <li>Voeg het gedownloade bestand toe als bijlage (je vindt het meestal in de map <em>Downloads</em>).</li>
+            <li>Verstuur de e-mail. Klaar!</li>
+          </ol>
+          <div class="btn-row" style="justify-content:center;margin-top:20px">
+            <a class="btn btn-dark" id="mailtoBtn" href="#"><i data-icon="mail"></i> E-mail openen</a>
+            <button class="btn" type="button" id="downloadAgain"><i data-icon="download"></i> Opnieuw downloaden</button>
+            <button class="btn" type="button" id="editAgain"><i data-icon="arrowLeft"></i> Toch nog aanpassen</button>
+          </div>
+          <div class="alert alert-warn" style="margin-top:24px;text-align:left">
+            <i data-icon="lock"></i>
+            <div>
+              <p><strong>Gedeelde computer?</strong> Wis je gegevens van dit toestel wanneer je klaar bent.</p>
+              <button class="btn btn-sm btn-dark" type="button" id="wipeBtn"><i data-icon="trash"></i> Mijn gegevens van dit toestel wissen</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Dialoog: tijdvak op één of meerdere dagen -->
+  <dialog class="modal" id="rangeDialog" aria-labelledby="rd-title">
+    <form method="dialog" id="rangeForm">
+      <div class="modal-head"><h2 id="rd-title">Tijdvak toevoegen</h2></div>
+      <div class="modal-body">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+          <div class="field"><label for="rdFrom">Van</label><select class="input" id="rdFrom"></select></div>
+          <div class="field"><label for="rdTo">Tot</label><select class="input" id="rdTo"></select></div>
+        </div>
+        <div class="field" style="margin-top:14px">
+          <span class="label">Status</span>
+          <div class="pill-group" role="radiogroup" aria-label="Status">
+            <label class="check-pill"><input type="radio" name="rdStatus" value="1" checked><span class="sw sw-1"></span> Fysiek</label>
+            <label class="check-pill"><input type="radio" name="rdStatus" value="2"><span class="sw sw-2"></span> Alleen online</label>
+            <label class="check-pill"><input type="radio" name="rdStatus" value="0"><span class="sw sw-0"></span> Wissen</label>
+          </div>
+        </div>
+        <div class="field" style="margin-top:16px">
+          <span class="label">Toepassen op</span>
+          <div class="quick-sel" id="rdQuick"></div>
+          <div class="copy-list" id="rdDays"></div>
+        </div>
+        <div class="field-error" id="rdError" aria-live="polite"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" value="cancel" type="button" id="rdCancel">Annuleren</button>
+        <button class="btn btn-primary" type="submit" id="rdApply">Toepassen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Dialoog: dag kopiëren naar andere dagen -->
+  <dialog class="modal" id="copyDialog" aria-labelledby="cp-title">
+    <form method="dialog" id="copyForm">
+      <div class="modal-head"><h2 id="cp-title">Kopieer naar andere dagen</h2></div>
+      <div class="modal-body">
+        <p class="muted small" id="cpInfo" style="margin-bottom:10px"></p>
+        <div class="quick-sel" id="cpQuick"></div>
+        <div class="copy-list" id="cpDays"></div>
+        <p class="small muted" style="margin:6px 0 0">De bestaande invulling van de gekozen dagen wordt vervangen.</p>
+        <div class="field-error" id="cpError" aria-live="polite"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" type="button" id="cpCancel">Annuleren</button>
+        <button class="btn btn-primary" type="submit">Kopiëren</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span id="year">2026</span> LUCID · Availability</span>
+      <span class="privacy-inline"><i data-icon="shield"></i> Geen tracking, geen cookies.</span>
+    </div>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="core.js"></script>
+  <script src="ui.js"></script>
+  <script src="availability.js"></script>
+</body>
+</html>
